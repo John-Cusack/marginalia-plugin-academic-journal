@@ -13,7 +13,7 @@ def _context(tmp_path, plugin_id: str = "academic-journal") -> PluginContext:
     return PluginContext(
         plugin_id=plugin_id,
         data_dir=tmp_path / "plugin-data" / plugin_id,
-        distribution_name="research-engine-plugin-academic-journal",
+        distribution_name="marginalia-ai-plugin-academic-journal",
         distribution_version="0.2.0",
     )
 

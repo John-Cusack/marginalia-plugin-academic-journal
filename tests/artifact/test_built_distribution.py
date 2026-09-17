@@ -35,7 +35,7 @@ def dist_dir() -> Path:
 
 @pytest.fixture(scope="module")
 def wheel(dist_dir) -> zipfile.ZipFile:
-    wheels = sorted(dist_dir.glob("research_engine_plugin_academic_journal-*.whl"))
+    wheels = sorted(dist_dir.glob("marginalia_ai_plugin_academic_journal-*.whl"))
     assert len(wheels) == 1, f"expected exactly one wheel, found {wheels}"
     with zipfile.ZipFile(wheels[0]) as archive:
         yield archive
@@ -43,7 +43,7 @@ def wheel(dist_dir) -> zipfile.ZipFile:
 
 @pytest.fixture(scope="module")
 def sdist(dist_dir) -> tarfile.TarFile:
-    sdists = sorted(dist_dir.glob("research_engine_plugin_academic_journal-*.tar.gz"))
+    sdists = sorted(dist_dir.glob("marginalia_ai_plugin_academic_journal-*.tar.gz"))
     assert len(sdists) == 1, f"expected exactly one sdist, found {sdists}"
     with tarfile.open(sdists[0]) as archive:
         yield archive
@@ -51,7 +51,7 @@ def sdist(dist_dir) -> tarfile.TarFile:
 
 def test_wheel_declares_the_plugin_entry_point(wheel):
     entry_points = wheel.read(
-        f"research_engine_plugin_academic_journal-{VERSION}.dist-info/entry_points.txt"
+        f"marginalia_ai_plugin_academic_journal-{VERSION}.dist-info/entry_points.txt"
     ).decode()
     assert "[research_engine.plugins]" in entry_points
     assert "academic-journal = acad" in entry_points
@@ -59,10 +59,10 @@ def test_wheel_declares_the_plugin_entry_point(wheel):
 
 def test_wheel_metadata_is_complete(wheel):
     raw = wheel.read(
-        f"research_engine_plugin_academic_journal-{VERSION}.dist-info/METADATA"
+        f"marginalia_ai_plugin_academic_journal-{VERSION}.dist-info/METADATA"
     )
     meta = BytesParser().parsebytes(raw)
-    assert meta["Name"] == "research-engine-plugin-academic-journal"
+    assert meta["Name"] == "marginalia-ai-plugin-academic-journal"
     assert meta["Version"] == VERSION
     assert meta["License-Expression"] == "Apache-2.0"
     assert meta["Requires-Python"] == ">=3.11"
@@ -74,9 +74,9 @@ def test_wheel_metadata_is_complete(wheel):
 
     requires = [Requirement(value) for value in meta.get_all("Requires-Dist") or []]
     runtime = {r.name: r for r in requires if not r.marker}
-    assert runtime["research-engine-sdk"].specifier == SpecifierSet(">=0.6,<0.7")
+    assert runtime["marginalia-ai-sdk"].specifier == SpecifierSet(">=0.6,<0.7")
     # Core is never a runtime dependency of a plugin distribution.
-    assert "research-engine" not in {r.name for r in requires}
+    assert "marginalia-ai" not in {r.name for r in requires}
     urls = {value.split(",")[0].strip() for value in meta.get_all("Project-URL") or []}
     assert {"Homepage", "Source", "Issues", "Changelog"} <= urls
 
@@ -130,7 +130,7 @@ def test_wheel_contains_only_committed_package_files(wheel):
 
 def test_sdist_holds_the_sources_needed_to_rebuild_and_test(sdist):
     names = set(sdist.getnames())
-    root = f"research_engine_plugin_academic_journal-{VERSION}"
+    root = f"marginalia_ai_plugin_academic_journal-{VERSION}"
     for member in (
         "pyproject.toml", "README.md", "LICENSE", "CHANGELOG.md",
         "acad/plugin.yaml", "acad/db/migrations/001_literature_pipeline.sql",

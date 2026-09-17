@@ -26,7 +26,7 @@ from acad.db import migrate
 from acad.infra.http_client import API_HOSTS
 
 PACKAGE_ROOT = Path(acad.__file__).parent
-DISTRIBUTION = "research-engine-plugin-academic-journal"
+DISTRIBUTION = "marginalia-ai-plugin-academic-journal"
 ENTRY_POINT_GROUP = "research_engine.plugins"
 
 
@@ -58,8 +58,8 @@ def test_distribution_metadata_is_complete():
     assert meta["Requires-Python"] == ">=3.11"
     assert (meta["Description"] or meta.get_payload() or "").strip()  # README
     requires = metadata.requires(DISTRIBUTION) or []
-    assert any(r.startswith("research-engine-sdk") for r in requires)
-    assert not any(r.split()[0] == "research-engine" for r in requires)
+    assert any(r.startswith("marginalia-ai-sdk") for r in requires)
+    assert not any(r.split()[0] == "marginalia-ai" for r in requires)
     urls = {value.split(",")[0].strip() for value in meta.get_all("Project-URL") or []}
     assert {"Homepage", "Source", "Issues", "Changelog"} <= urls
 

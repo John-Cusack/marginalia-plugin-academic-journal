@@ -67,7 +67,7 @@ jobs:
         run: |
           python -m venv /tmp/acad-ci-smoke
           /tmp/acad-ci-smoke/bin/python -m pip install --upgrade pip
-          /tmp/acad-ci-smoke/bin/python -m pip install "research-engine==${CORE_VERSION}" dist/*.whl
+          /tmp/acad-ci-smoke/bin/python -m pip install "marginalia-ai==${CORE_VERSION}" dist/*.whl
           /tmp/acad-ci-smoke/bin/python - <<'PY'
           import sys
           from research_engine.plugins.discovery import scan_plugins

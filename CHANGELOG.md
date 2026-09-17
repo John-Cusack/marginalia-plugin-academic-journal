@@ -6,11 +6,11 @@ First release as a Python distribution for Research Engine 0.6.
 
 ### Packaging
 
-- Renamed the distribution to `research-engine-plugin-academic-journal` and declared the
+- Named the distribution `marginalia-ai-plugin-academic-journal` and declared the
   `research_engine.plugins` entry point `academic-journal = "acad"`.
 - Moved the manifest to `acad/plugin.yaml` (schema v2) and the extraction schema under
   `acad/schemas/`, so both ship in the wheel. Core discovers the plugin without importing it.
-- Depends on `research-engine-sdk>=0.6,<0.7` only; every runtime import of `research_engine`
+- Depends on `marginalia-ai-sdk>=0.6,<0.7` only; every runtime import of `research_engine`
   is gone. Declares `sqlalchemy`, which the filter extension always needed.
 - Corrected the licence metadata to Apache-2.0, matching `LICENSE` (0.1.x said MIT).
 

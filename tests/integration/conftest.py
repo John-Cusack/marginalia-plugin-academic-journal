@@ -157,7 +157,7 @@ def context(tmp_path) -> PluginContext:
     return PluginContext(
         plugin_id="academic-journal",
         data_dir=tmp_path / "plugin-data" / "academic-journal",
-        distribution_name="research-engine-plugin-academic-journal",
+        distribution_name="marginalia-ai-plugin-academic-journal",
         distribution_version="0.2.0",
     )
 

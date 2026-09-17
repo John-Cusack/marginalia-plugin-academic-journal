@@ -1,6 +1,6 @@
 # Research Engine Academic Journal Plugin
 
-`research-engine-plugin-academic-journal` adds scholarly literature to a
+`marginalia-ai-plugin-academic-journal` adds scholarly literature to a
 [Research Engine](https://github.com/John-Cusack/MarginaliaAI) corpus. It discovers papers,
 resolves legal open-access copies, downloads and ingests them, extracts their bibliographies,
 and records `cites` edges between ingested papers — snowballing through references to a
@@ -52,18 +52,18 @@ HTTP 429 responses are retried with the server's `Retry-After` (capped at 60 sec
 
 ## Install
 
-The plugin depends only on `research-engine-sdk`; install it into the same environment as
-`research-engine` 0.6.x.
+The plugin depends only on `marginalia-ai-sdk`; install it into the same environment as
+`marginalia-ai` 0.6.x.
 
 ```bash
-python -m pip install research-engine research-engine-plugin-academic-journal
+python -m pip install marginalia-ai marginalia-ai-plugin-academic-journal
 ```
 
 With pipx:
 
 ```bash
-pipx install research-engine
-pipx inject research-engine research-engine-plugin-academic-journal
+pipx install marginalia-ai
+pipx inject marginalia-ai marginalia-ai-plugin-academic-journal
 ```
 
 Installation only makes the static manifest discoverable. Core imports nothing until you
@@ -173,7 +173,7 @@ or redistribute anything.
 
 ## Compatibility
 
-| Plugin | research-engine / research-engine-sdk | Python |
+| Plugin | marginalia-ai / marginalia-ai-sdk | Python |
 |---|---|---|
 | 0.2.x | 0.6.x | ≥ 3.11 |
 
@@ -225,4 +225,5 @@ RE_DB_URL=postgresql+asyncpg://user:pass@host:5432/acad_smoke_test \
 
 Report problems at
 [issues](https://github.com/John-Cusack/marginalia-plugin-academic-journal/issues). See the
-[changelog](CHANGELOG.md). Licensed under [Apache-2.0](LICENSE).
+[changelog](CHANGELOG.md) and, for maintainers, [RELEASING.md](RELEASING.md). Licensed under
+[Apache-2.0](LICENSE).

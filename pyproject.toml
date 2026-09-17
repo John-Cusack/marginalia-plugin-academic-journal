@@ -1,5 +1,5 @@
 [project]
-name = "research-engine-plugin-academic-journal"
+name = "marginalia-ai-plugin-academic-journal"
 dynamic = ["version"]
 description = "Academic literature discovery, acquisition, and citation-graph plugin for Research Engine"
 readme = "README.md"
@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "MarginaliaAI" }]
-keywords = ["citations", "crossref", "openalex", "research-engine", "scholarly-literature"]
+keywords = ["citations", "crossref", "marginalia-ai", "openalex", "scholarly-literature"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -18,7 +18,7 @@ classifiers = [
     "Topic :: Text Processing :: Indexing",
 ]
 dependencies = [
-    "research-engine-sdk>=0.6,<0.7",
+    "marginalia-ai-sdk>=0.6,<0.7",
     "asyncpg>=0.29,<1",
     "httpx>=0.27,<1",
     "pydantic>=2.5,<3",
@@ -39,7 +39,7 @@ dev = [
 # core artifact the plugin is proven against; testcontainers supplies a disposable
 # PostgreSQL when ACAD_TEST_DATABASE_URL is not set.
 integration = [
-    "research-engine[documents]==0.6.0",
+    "marginalia-ai[documents]==0.6.0",
     "testcontainers[postgres]>=4,<5",
     # testcontainers' readiness probe speaks psycopg2; the plugin itself uses asyncpg.
     "psycopg2-binary>=2.9,<3",
@@ -71,7 +71,7 @@ include = ["acad", "tests", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.t
 asyncio_mode = "auto"
 addopts = "--strict-markers"
 markers = [
-    "integration: needs PostgreSQL and the research-engine core artifact",
+    "integration: needs PostgreSQL and the marginalia-ai core artifact",
     "live: calls real provider APIs; opt in with ACAD_LIVE_TESTS=1",
     "artifact: inspects built wheel/sdist files in ACAD_DIST_DIR",
 ]

@@ -109,7 +109,7 @@ def test_installed_distribution_is_discovered_without_importing_the_package():
     )
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "research-engine-plugin-academic-journal"
+    assert result.stdout.strip() == "marginalia-ai-plugin-academic-journal"
 
 
 async def test_audit_reports_every_contribution_and_the_database_revision(manager, discovered):
@@ -133,7 +133,7 @@ async def test_enable_records_the_exact_version_and_hash(manager, activations, d
         PLUGIN_ID, non_interactive=True, discovered_plugins=[discovered]
     )
 
-    assert activation.distribution_name == "research-engine-plugin-academic-journal"
+    assert activation.distribution_name == "marginalia-ai-plugin-academic-journal"
     assert activation.distribution_version == discovered.distribution_version
     assert activation.manifest_sha256 == discovered.manifest_sha256
     assert activation.entry_point_name == PLUGIN_ID
@@ -332,7 +332,7 @@ async def test_loaded_plugin_receives_scoped_clients_and_its_data_dir(
     context = clients["context"]
     assert context.plugin_id == PLUGIN_ID
     assert context.data_dir == (tmp_path / "plugin-data" / PLUGIN_ID).resolve()
-    assert context.distribution_name == "research-engine-plugin-academic-journal"
+    assert context.distribution_name == "marginalia-ai-plugin-academic-journal"
     # ingest and write are granted; llm is not.
     assert not type(clients["ingestion"]).__name__.startswith("Denied")
     assert not type(clients["edge"]).__name__.startswith("Denied")
