@@ -38,7 +38,6 @@ def clients():
     """Wire mock extraction/corpus/edge clients; reset module globals after."""
     extraction = AsyncMock()
     corpus = AsyncMock()
-    edge = AsyncMock(return_value={"id": str(uuid4())})
     edge_client = AsyncMock()
     edge_client.create = AsyncMock(return_value={"id": str(uuid4())})
     ce.set_clients(extraction=extraction, corpus=corpus, edge=edge_client)

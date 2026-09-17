@@ -1,10 +1,9 @@
-"""Integration tests for discovery pipeline (mocked HTTP)."""
+"""Unit tests for discovery response parsing."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 import pytest
 

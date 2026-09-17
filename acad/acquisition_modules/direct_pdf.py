@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from acad.acquisition_modules.base import AcquisitionModule
 from acad.infra.http_client import ResilientHttpClient
 from acad.models import AcquiredFile, Paper
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class DirectPDFModule(AcquisitionModule):
@@ -35,7 +37,7 @@ class DirectPDFModule(AcquisitionModule):
             await http.close()
 
         content = dest.read_bytes()
-        if not content[:5] == b"%PDF-":
+        if content[:5] != b"%PDF-":
             dest.unlink(missing_ok=True)
             raise ValueError("Downloaded file is not a valid PDF (missing %PDF- header)")
 

@@ -7,12 +7,15 @@ import importlib.util
 import logging
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from acad.acquisition_modules.arxiv import ArxivModule
 from acad.acquisition_modules.base import AcquisitionModule
 from acad.acquisition_modules.direct_pdf import DirectPDFModule
 from acad.acquisition_modules.unpaywall import UnpaywallModule
-from acad.models import Paper
+
+if TYPE_CHECKING:
+    from acad.models import Paper
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +34,17 @@ def _register_builtins() -> None:
 
 
 def _discover_user_modules() -> None:
-    """Load user acquisition modules from ~/.research-engine/acad-modules/."""
-    user_dir = Path(os.environ.get(
-        "ACAD_MODULES_DIR",
-        os.path.expanduser("~/.research-engine/acad-modules"),
-    ))
+    """Load user acquisition modules from ``ACAD_MODULES_DIR``, when explicitly set.
+
+    These files execute in the core process with the plugin's approval, so they are
+    only read from a directory the operator names; there is no default location.
+    """
+    configured = os.environ.get("ACAD_MODULES_DIR")
+    if not configured:
+        return
+    user_dir = Path(configured)
     if not user_dir.is_dir():
+        logger.warning("ACAD_MODULES_DIR %s is not a directory", user_dir)
         return
 
     for py_file in user_dir.glob("*.py"):
@@ -93,9 +101,8 @@ async def select_module(paper: Paper) -> tuple[AcquisitionModule, float, str] | 
     for module in _modules:
         try:
             confidence, reason = await module.can_acquire(paper)
-            if confidence > 0:
-                if best is None or confidence > best[1]:
-                    best = (module, confidence, reason)
+            if confidence > 0 and (best is None or confidence > best[1]):
+                best = (module, confidence, reason)
         except Exception as exc:
             logger.warning(
                 "Module %s.can_acquire failed: %s", module.id, exc

@@ -1,75 +1,43 @@
-"""acad.search_papers — Search ingested academic papers."""
+"""academic-journal.search_papers — Search ingested academic papers."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from research_engine.plugins.sdk import tool
+from acad import config
 
-from acad.db.migrate import run_migrations
+if TYPE_CHECKING:
+    from research_engine_sdk import PluginContext
 
 
-@tool(
-    id="acad.search_papers",
-    description="Search across ingested academic papers using vector+keyword hybrid search. "
-                "Only searches papers that have been fully ingested into the corpus.",
-    input_schema={
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "Search query",
-            },
-            "year_min": {
-                "type": "integer",
-                "description": "Minimum publication year filter",
-            },
-            "year_max": {
-                "type": "integer",
-                "description": "Maximum publication year filter",
-            },
-            "venue": {
-                "type": "string",
-                "description": "Filter by venue/journal name (substring match)",
-            },
-            "k": {
-                "type": "integer",
-                "description": "Number of results (default 20)",
-                "default": 20,
-            },
-        },
-        "required": ["query"],
-    },
-)
 async def handler(
     query: str,
     year_min: int | None = None,
     year_max: int | None = None,
     venue: str | None = None,
     k: int = 20,
+    *,
     corpus: Any = None,
-    **kwargs: Any,
+    context: PluginContext | None = None,
+    **clients: Any,
 ) -> dict:
-    await run_migrations()
-
+    config.bind_context(context)
     if corpus is None:
         return {"error": "Corpus client not available"}
 
-    # Year/venue filtering routes through the registered 'academic_paper'
-    # FilterExtension (acad/filters.py), which joins the academic_paper SQL
-    # table — far more selective than JSONB containment against passage metadata.
-    extensions: dict[str, Any] = {}
+    # Scope to this plugin's papers through the registered 'academic_paper' filter
+    # extension, which joins acad_papers.document_id. It is always applied, even with
+    # no year/venue bounds: that join is what "academic paper" means here. A
+    # document_type filter would match nothing — core types ingested PDFs by parser.
+    extension: dict[str, Any] = {}
     if year_min is not None:
-        extensions["year_min"] = year_min
+        extension["year_min"] = year_min
     if year_max is not None:
-        extensions["year_max"] = year_max
+        extension["year_max"] = year_max
     if venue:
-        extensions["venue"] = venue
+        extension["venue"] = venue
 
-    filters: dict[str, Any] = {"document_types": ["academic_journal"]}
-    if extensions:
-        filters["extensions"] = {"academic_paper": extensions}
-
+    filters: dict[str, Any] = {"extensions": {"academic_paper": extension}}
     result = await corpus.find_passages(query, filters=filters, k=k)
 
     return {

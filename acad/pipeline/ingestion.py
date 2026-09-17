@@ -39,8 +39,10 @@ async def ingestion_handler(job: dict[str, Any]) -> None:
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF not found at {file_path}")
 
-    # Call core ingestion
-    stats = await _ingestion_client.ingest_paths([pdf_path], hint="academic_journal")
+    # Call core ingestion. No module hint: core treats a hint as an ingestion
+    # module id, and there is no "academic_journal" module — the PDF parser is
+    # chosen by detection like any other file.
+    stats = await _ingestion_client.ingest_paths([pdf_path])
 
     if stats.get("ok", 0) > 0 or stats.get("skipped", 0) > 0:
         # The core orchestrator doesn't return document IDs directly, so look
@@ -60,7 +62,8 @@ async def ingestion_handler(job: dict[str, Any]) -> None:
 async def _link_document(paper_id: Any, pdf_path: Path) -> None:
     """Resolve and persist the core document_id for an ingested paper."""
     try:
-        existing = await _ingestion_client.find_existing(source_pattern=str(pdf_path))
+        # Core stores the resolved path as the document source; match it exactly.
+        existing = await _ingestion_client.find_existing(source=str(pdf_path.resolve()))
         if existing:
             await db.update_paper_document_id(paper_id, existing[0]["document_id"])
             logger.info("Paper %s: linked to document %s", paper_id, existing[0]["document_id"])

@@ -1,4 +1,4 @@
-"""Integration tests for resolution strategies."""
+"""Unit tests for resolution strategies."""
 
 from __future__ import annotations
 

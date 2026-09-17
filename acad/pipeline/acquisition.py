@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
-import os
-from pathlib import Path
 from typing import Any
 
+from acad import config
 from acad.acquisition_modules import registry as acq_registry
 from acad.db import queries as db
 from acad.infra.job_queue import JobQueue
 from acad.models import ExternalId, ExternalIdSource, Paper
 
 logger = logging.getLogger(__name__)
-
-_PAPERS_DIR = Path(os.environ.get(
-    "ACAD_PAPERS_DIR",
-    os.path.expanduser("~/.research-engine/papers"),
-))
 
 
 async def acquire_handler(job: dict[str, Any]) -> None:
@@ -32,10 +27,8 @@ async def acquire_handler(job: dict[str, Any]) -> None:
     ext_ids_raw = await db.get_external_ids(paper_id)
     external_ids = []
     for source, ext_id in ext_ids_raw.items():
-        try:
+        with contextlib.suppress(ValueError):
             external_ids.append(ExternalId(source=ExternalIdSource(source), external_id=ext_id))
-        except ValueError:
-            pass
 
     paper = Paper(
         id=paper_id,
@@ -62,9 +55,8 @@ async def acquire_handler(job: dict[str, Any]) -> None:
         paper_id, module.id, confidence, reason,
     )
 
-    # Prepare destination
-    _PAPERS_DIR.mkdir(parents=True, exist_ok=True)
-    dest = _PAPERS_DIR / f"{paper_id}.pdf"
+    # Downloads stay under the plugin data directory core assigned.
+    dest = config.papers_dir() / f"{paper_id}.pdf"
 
     # Download
     acquired = await module.acquire(paper, dest)

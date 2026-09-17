@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from acad.models import AcquiredFile, Paper
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from acad.models import AcquiredFile, Paper
 
 
 class AcquisitionModule(ABC):

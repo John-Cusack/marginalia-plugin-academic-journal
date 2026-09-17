@@ -1,45 +1,28 @@
-"""acad.discover_by_author — Find papers by author."""
+"""academic-journal.discover_by_author — Find papers by author."""
 
 from __future__ import annotations
 
-from research_engine.plugins.sdk import tool
+from typing import TYPE_CHECKING, Any
 
-from acad.db.migrate import run_migrations
+from acad import config
 from acad.pipeline.discovery import discover_by_author
 
+if TYPE_CHECKING:
+    from research_engine_sdk import PluginContext
 
-@tool(
-    id="acad.discover_by_author",
-    description="Discover academic papers by author name or OpenAlex author ID.",
-    input_schema={
-        "type": "object",
-        "properties": {
-            "author_name": {
-                "type": "string",
-                "description": "Author name to search for",
-            },
-            "openalex_author_id": {
-                "type": "string",
-                "description": "OpenAlex author ID (e.g., 'A5023888391')",
-            },
-            "max_papers": {
-                "type": "integer",
-                "description": "Maximum papers to discover (default 200)",
-                "default": 200,
-            },
-        },
-    },
-)
+
 async def handler(
     author_name: str | None = None,
     openalex_author_id: str | None = None,
     max_papers: int = 200,
-    **kwargs,
+    *,
+    context: PluginContext | None = None,
+    **clients: Any,
 ) -> dict:
     if not author_name and not openalex_author_id:
         return {"error": "Either author_name or openalex_author_id is required"}
 
-    await run_migrations()
+    config.bind_context(context)
     run_id = await discover_by_author(
         author_name=author_name,
         openalex_author_id=openalex_author_id,

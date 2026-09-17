@@ -3,12 +3,23 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
-from typing import ClassVar
+import re
+from typing import TYPE_CHECKING, ClassVar
 
 from acad.acquisition_modules.base import AcquisitionModule
 from acad.infra.http_client import ResilientHttpClient
 from acad.models import AcquiredFile, Paper
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+#: ``https://arxiv.org/pdf/2401.00001v2.pdf`` and ``/abs/hep-th/9901001`` alike.
+_ARXIV_URL = re.compile(r"arxiv\.org/(?:pdf|abs)/(?P<id>[^?#]+?)(?:\.pdf)?/?$", re.IGNORECASE)
+
+
+def _arxiv_id_from_url(url: str | None) -> str | None:
+    match = _ARXIV_URL.search(url or "")
+    return match.group("id") if match else None
 
 
 class ArxivModule(AcquisitionModule):
@@ -32,8 +43,13 @@ class ArxivModule(AcquisitionModule):
                 arxiv_id = ext_id.external_id
                 break
 
+        # can_acquire also accepts a paper whose only arXiv evidence is its
+        # open-access URL, so the identifier has to be recoverable from it too.
         if not arxiv_id:
-            raise ValueError("No arXiv ID found")
+            arxiv_id = _arxiv_id_from_url(paper.open_access_url)
+
+        if not arxiv_id:
+            raise ValueError("No arXiv ID found in identifiers or open access URL")
 
         arxiv_id = arxiv_id.removeprefix("arXiv:").removeprefix("arxiv:")
         pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
@@ -49,7 +65,7 @@ class ArxivModule(AcquisitionModule):
             await http.close()
 
         content = dest.read_bytes()
-        if not content[:5] == b"%PDF-":
+        if content[:5] != b"%PDF-":
             dest.unlink(missing_ok=True)
             raise ValueError("Downloaded arXiv file is not a valid PDF")
 

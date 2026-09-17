@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 from acad.db import queries as db
 from acad.infra.http_client import ResilientHttpClient
 from acad.infra.job_queue import JobQueue
+
+if TYPE_CHECKING:
+    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 

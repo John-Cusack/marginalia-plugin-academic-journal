@@ -5,17 +5,60 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
+from acad import config
 from acad.db import queries as db
-from acad.infra.circuit_breaker import CircuitOpenError, get_breaker
+from acad.infra.circuit_breaker import get_breaker
 from acad.infra.rate_limiter import get_limiter
 
 logger = logging.getLogger(__name__)
 
 _MAX_RETRIES = 5
+_MAX_RETRY_AFTER = 60.0
+
+#: Metadata APIs this plugin calls. Must equal ``network_allowlist`` in plugin.yaml
+#: (a contract test holds them together). PDF downloads are not limited to these hosts:
+#: open-access copies live on publisher and repository sites, which is why the
+#: manifest declares ``network: full``.
+API_HOSTS = frozenset({
+    "api.openalex.org",
+    "api.semanticscholar.org",
+    "api.crossref.org",
+    "api.unpaywall.org",
+    "arxiv.org",
+    "api.core.ac.uk",
+    "eutils.ncbi.nlm.nih.gov",
+    "www.ncbi.nlm.nih.gov",
+})
+
+
+class HostNotAllowed(ValueError):
+    """A metadata API call targeted a host outside the declared allowlist."""
+
+
+def _retry_after(value: str | None, default: float) -> float:
+    try:
+        seconds = float(value) if value is not None else default
+    except ValueError:  # an HTTP-date; not worth parsing for a bounded wait
+        seconds = default
+    return max(0.0, min(seconds, _MAX_RETRY_AFTER))
+
+
+async def _log_call(record: dict[str, Any]) -> None:
+    """Record an API call. Best-effort: auditing must never fail the request itself."""
+    try:
+        await db.log_api_call(record)
+    except Exception as exc:
+        logger.warning(
+            "academic-journal could not log API call to %s: %s",
+            record.get("source"),
+            config.redact_text(str(exc)) or type(exc).__name__,
+        )
 
 
 class ResilientHttpClient:
@@ -44,6 +87,9 @@ class ResilientHttpClient:
         job_id: Any | None = None,
     ) -> httpx.Response:
         """Make a rate-limited, circuit-broken HTTP request with retry on 429."""
+        host = urlsplit(url).hostname or ""
+        if host not in API_HOSTS:
+            raise HostNotAllowed(f"{host!r} is not a declared academic-journal API host")
         limiter = get_limiter(source)
         breaker = get_breaker(source)
         client = await self._get_client()
@@ -66,9 +112,7 @@ class ResilientHttpClient:
 
                 if resp.status_code == 429:
                     default_wait = min(2 * (2 ** attempt), 30)
-                    retry_after = float(
-                        resp.headers.get("Retry-After", default_wait)
-                    )
+                    retry_after = _retry_after(resp.headers.get("Retry-After"), default_wait)
                     logger.info(
                         "%s rate limited (429), waiting %.0fs (attempt %d/%d)",
                         source, retry_after, attempt + 1, _MAX_RETRIES,
@@ -94,7 +138,7 @@ class ResilientHttpClient:
                 raise
             finally:
                 duration_ms = int((time.monotonic() - start) * 1000)
-                await db.log_api_call({
+                await _log_call({
                     "source": source,
                     "endpoint": url,
                     "method": method,
@@ -135,9 +179,10 @@ class ResilientHttpClient:
         job_id: Any | None = None,
     ) -> tuple[int, str]:
         """Download a file to disk. Returns (size, content_type)."""
-        from urllib.parse import urlparse
-
-        domain = urlparse(url).netloc
+        parts = urlsplit(url)
+        if parts.scheme not in {"http", "https"}:
+            raise ValueError(f"refusing to download non-HTTP URL scheme {parts.scheme!r}")
+        domain = parts.netloc
         breaker_key = f"pdf:{domain}"
         limiter = get_limiter(source)
         breaker = get_breaker(breaker_key)
@@ -158,7 +203,6 @@ class ResilientHttpClient:
             resp.raise_for_status()
             breaker.record_success()
 
-            from pathlib import Path
             Path(dest_path).write_bytes(resp.content)
             content_type = resp.headers.get("content-type", "")
             return resp_size, content_type
@@ -176,7 +220,7 @@ class ResilientHttpClient:
             raise
         finally:
             duration_ms = int((time.monotonic() - start) * 1000)
-            await db.log_api_call({
+            await _log_call({
                 "source": source,
                 "endpoint": url,
                 "method": "GET",

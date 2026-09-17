@@ -2,20 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
 import sqlalchemy as sa
 
 from acad.filters import AcademicPaperFilter
 
 
 class TestAcademicPaperFilter:
-    def test_protocol_conformance(self):
-        pytest.importorskip("research_engine")
-        from research_engine.domain.filter_extension import FilterExtension
-
-        f = AcademicPaperFilter()
-        assert isinstance(f, FilterExtension)
-
     def test_properties(self):
         f = AcademicPaperFilter()
         assert f.filter_id == "academic_paper"

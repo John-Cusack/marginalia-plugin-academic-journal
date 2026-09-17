@@ -1,12 +1,14 @@
-"""Integration tests for acquisition modules."""
+"""Unit tests for acquisition modules."""
 
 from __future__ import annotations
 
+import httpx
 import pytest
+import respx
 
-from acad.acquisition_modules.arxiv import ArxivModule
+from acad.acquisition_modules.arxiv import ArxivModule, _arxiv_id_from_url
 from acad.acquisition_modules.direct_pdf import DirectPDFModule
-from acad.acquisition_modules.registry import get_modules, initialize, select_module
+from acad.acquisition_modules.registry import get_modules, select_module
 from acad.acquisition_modules.unpaywall import UnpaywallModule
 from acad.models import ExternalId, ExternalIdSource, Paper
 
@@ -114,3 +116,43 @@ class TestModuleRegistry:
         modules = get_modules()
         priorities = [m.priority for m in modules]
         assert priorities == sorted(priorities, reverse=True)
+
+
+class TestArxivIdRecovery:
+    """can_acquire accepts an arXiv OA URL, so acquire must handle one."""
+
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            ("https://arxiv.org/pdf/1706.03762.pdf", "1706.03762"),
+            ("https://arxiv.org/pdf/2401.00001v2.pdf", "2401.00001v2"),
+            ("https://arxiv.org/abs/hep-th/9901001", "hep-th/9901001"),
+            ("http://ARXIV.ORG/pdf/2401.00002", "2401.00002"),
+            ("https://example.org/paper.pdf", None),
+            (None, None),
+        ],
+    )
+    def test_identifier_is_recovered_from_the_url(self, url, expected):
+        assert _arxiv_id_from_url(url) == expected
+
+    @pytest.mark.asyncio
+    async def test_acquire_uses_the_url_when_no_identifier_is_recorded(self, tmp_path):
+        paper = Paper(title="arXiv only by URL", open_access_url="https://arxiv.org/pdf/2401.00001.pdf")
+        module = ArxivModule()
+        confidence, _ = await module.can_acquire(paper)
+        assert confidence > 0
+
+        with respx.mock:
+            route = respx.get("https://arxiv.org/pdf/2401.00001.pdf").mock(
+                return_value=httpx.Response(200, content=b"%PDF-1.4\n%%EOF\n")
+            )
+            acquired = await module.acquire(paper, tmp_path / "paper.pdf")
+
+        assert route.called
+        assert acquired.module_id == "arxiv"
+        assert acquired.source_url == "https://arxiv.org/pdf/2401.00001.pdf"
+
+    @pytest.mark.asyncio
+    async def test_acquire_without_any_arxiv_evidence_explains_itself(self, tmp_path):
+        with pytest.raises(ValueError, match="identifiers or open access URL"):
+            await ArxivModule().acquire(Paper(title="No arXiv"), tmp_path / "x.pdf")

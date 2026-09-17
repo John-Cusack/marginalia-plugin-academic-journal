@@ -1,66 +1,47 @@
-"""acad.import_manual_pdf — Import a manually downloaded PDF."""
+"""academic-journal.import_manual_pdf — Import a manually downloaded PDF."""
 
 from __future__ import annotations
 
 import hashlib
+import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
-from research_engine.plugins.sdk import tool
-
+from acad import config
 from acad.db import queries as db
-from acad.db.migrate import run_migrations
 from acad.infra.job_queue import JobQueue
 
+if TYPE_CHECKING:
+    from research_engine_sdk import PluginContext
 
-@tool(
-    id="acad.import_manual_pdf",
-    description="Link a manually downloaded PDF to an existing paper record, "
-                "or create a new paper record and advance it to the 'acquired' stage.",
-    input_schema={
-        "type": "object",
-        "properties": {
-            "file_path": {
-                "type": "string",
-                "description": "Absolute path to the PDF file",
-            },
-            "paper_id": {
-                "type": "string",
-                "description": "UUID of an existing paper record",
-            },
-            "doi": {
-                "type": "string",
-                "description": "DOI to look up or create a paper record for",
-            },
-            "title": {
-                "type": "string",
-                "description": "Paper title (used if creating a new record)",
-            },
-        },
-        "required": ["file_path"],
-    },
-)
+
 async def handler(
     file_path: str,
     paper_id: str | None = None,
     doi: str | None = None,
     title: str | None = None,
-    **kwargs,
+    *,
+    context: PluginContext | None = None,
+    **clients: Any,
 ) -> dict:
-    await run_migrations()
+    config.bind_context(context)
 
-    pdf_path = Path(file_path)
-    if not pdf_path.exists():
+    # The caller names this file explicitly; it is read once and copied into the
+    # plugin data directory, so later stages never depend on where it came from.
+    pdf_path = Path(file_path).expanduser()
+    if not pdf_path.is_absolute():
+        return {"error": "file_path must be absolute; the server's working directory is not yours"}
+    if not pdf_path.is_file():
         return {"error": f"File not found: {file_path}"}
-    if not pdf_path.suffix.lower() == ".pdf":
+    if pdf_path.suffix.lower() != ".pdf":
         return {"error": "File must be a PDF"}
 
     content = pdf_path.read_bytes()
-    if not content[:5] == b"%PDF-":
+    if content[:5] != b"%PDF-":
         return {"error": "File is not a valid PDF (missing %PDF- header)"}
 
     file_hash = hashlib.sha256(content).hexdigest()
-
-    from uuid import UUID
 
     # Find or create paper record
     if paper_id:
@@ -88,8 +69,12 @@ async def handler(
     else:
         return {"error": "At least one of paper_id, doi, or title is required"}
 
+    dest = config.papers_dir() / f"{pid}.pdf"
+    if pdf_path.resolve() != dest.resolve():
+        shutil.copyfile(pdf_path, dest)
+
     # Update paper with file info and advance to acquired
-    await db.update_paper_file(pid, str(pdf_path.resolve()), file_hash)
+    await db.update_paper_file(pid, str(dest.resolve()), file_hash)
     await db.update_paper_stage(pid, "acquired", "succeeded")
 
     # Enqueue ingestion
@@ -97,6 +82,7 @@ async def handler(
 
     return {
         "paper_id": str(pid),
+        "file_path": str(dest.resolve()),
         "file_hash": file_hash,
         "file_size": len(content),
         "status": "acquired",

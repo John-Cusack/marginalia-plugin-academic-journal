@@ -1,30 +1,20 @@
-"""acad.discover_by_doi — Look up a single paper by DOI."""
+"""academic-journal.discover_by_doi — Look up a single paper by DOI."""
 
 from __future__ import annotations
 
-from research_engine.plugins.sdk import tool
+from typing import TYPE_CHECKING, Any
 
-from acad.db.migrate import run_migrations
+from acad import config
 from acad.pipeline.discovery import discover_by_doi
 
+if TYPE_CHECKING:
+    from research_engine_sdk import PluginContext
 
-@tool(
-    id="acad.discover_by_doi",
-    description="Look up a single academic paper by its DOI. "
-                "If not already known, discovers it from OpenAlex.",
-    input_schema={
-        "type": "object",
-        "properties": {
-            "doi": {
-                "type": "string",
-                "description": "The DOI (e.g., '10.1038/s41586-021-03819-2')",
-            },
-        },
-        "required": ["doi"],
-    },
-)
-async def handler(doi: str, **kwargs) -> dict:
-    await run_migrations()
+
+async def handler(
+    doi: str, *, context: PluginContext | None = None, **clients: Any
+) -> dict:
+    config.bind_context(context)
     paper_id = await discover_by_doi(doi)
     if paper_id:
         return {"paper_id": str(paper_id), "doi": doi, "status": "found"}

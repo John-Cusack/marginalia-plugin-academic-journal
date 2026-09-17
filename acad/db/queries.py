@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import random
-from typing import Any
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
+from acad import config
 from acad.db.pool import get_pool
 
+if TYPE_CHECKING:
+    from uuid import UUID
 
 # ---------- Papers ----------
 
@@ -278,10 +280,12 @@ async def log_api_call(data: dict[str, Any]) -> UUID:
             data["source"],
             data["endpoint"],
             data.get("method", "GET"),
-            json.dumps(data.get("request_params")) if data.get("request_params") else None,
+            json.dumps(config.redact_params(data["request_params"]))
+            if data.get("request_params")
+            else None,
             data.get("response_status"),
             data.get("response_size"),
-            data.get("error"),
+            config.redact_text(data["error"]) if data.get("error") else None,
             data.get("duration_ms"),
             data.get("paper_id"),
             data.get("job_id"),
@@ -294,8 +298,14 @@ async def log_api_call(data: dict[str, Any]) -> UUID:
 
 async def create_job(paper_id: UUID, stage: str, priority: int = 0) -> UUID:
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        # Dedup: return existing pending job
+    async with pool.acquire() as conn, conn.transaction():
+        # Dedup: return the existing pending job. The advisory lock serialises
+        # concurrent enqueues of one (paper, stage); without it two callers both
+        # miss the SELECT and both INSERT.
+        await conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+            f"acad_jobs:{paper_id}:{stage}",
+        )
         existing = await conn.fetchrow(
             "SELECT id FROM acad_jobs WHERE paper_id = $1 AND stage = $2 AND status = 'pending'",
             paper_id, stage,
@@ -312,29 +322,39 @@ async def create_job(paper_id: UUID, stage: str, priority: int = 0) -> UUID:
         return row["id"]
 
 
-async def claim_jobs(stage: str, limit: int, worker_id: str) -> list[dict]:
-    """Claim pending jobs using SELECT FOR UPDATE SKIP LOCKED."""
+async def claim_jobs(
+    stage: str, limit: int, worker_id: str, lease_seconds: float | None = None
+) -> list[dict]:
+    """Claim pending jobs using SELECT FOR UPDATE SKIP LOCKED.
+
+    A job whose lock is older than the lease is claimable again: the worker that
+    held it belonged to a process that stopped (server restart, crash) without
+    completing or failing it, and nothing else would ever release it.
+    """
+    lease = config.job_lease_seconds() if lease_seconds is None else lease_seconds
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            rows = await conn.fetch(
-                """UPDATE acad_jobs
-                SET status = 'in_progress',
-                    locked_at = NOW(),
-                    locked_by = $1
-                WHERE id IN (
-                    SELECT id FROM acad_jobs
-                    WHERE stage = $2
-                      AND status = 'pending'
-                      AND scheduled_after <= NOW()
-                    ORDER BY priority DESC, created_at ASC
-                    LIMIT $3
-                    FOR UPDATE SKIP LOCKED
-                )
-                RETURNING *""",
-                worker_id, stage, limit,
+    async with pool.acquire() as conn, conn.transaction():
+        rows = await conn.fetch(
+            """UPDATE acad_jobs
+            SET status = 'in_progress',
+                locked_at = NOW(),
+                locked_by = $1
+            WHERE id IN (
+                SELECT id FROM acad_jobs
+                WHERE stage = $2
+                  AND (
+                    (status = 'pending' AND scheduled_after <= NOW())
+                    OR (status = 'in_progress'
+                        AND locked_at < NOW() - make_interval(secs => $4))
+                  )
+                ORDER BY priority DESC, created_at ASC
+                LIMIT $3
+                FOR UPDATE SKIP LOCKED
             )
-            return [dict(r) for r in rows]
+            RETURNING *""",
+            worker_id, stage, limit, float(lease),
+        )
+        return [dict(r) for r in rows]
 
 
 async def complete_job(job_id: UUID) -> None:
@@ -350,6 +370,7 @@ async def complete_job(job_id: UUID) -> None:
 
 async def fail_job(job_id: UUID, error: str) -> None:
     """Increment attempts and apply exponential backoff with jitter."""
+    error = config.redact_text(error)
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
