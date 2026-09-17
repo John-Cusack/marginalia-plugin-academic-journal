@@ -1,0 +1,30 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message": {
+    "total-results": 1,
+    "items": [
+      {
+        "DOI": "10.1038/s41586-021-03819-2",
+        "title": ["Highly accurate protein structure prediction with AlphaFold"],
+        "abstract": "Proteins are essential to life, and understanding their structure can facilitate...",
+        "published-print": {
+          "date-parts": [[2021, 7, 15]]
+        },
+        "container-title": ["Nature"],
+        "is-referenced-by-count": 18000,
+        "author": [
+          {"given": "John", "family": "Jumper"},
+          {"given": "Richard", "family": "Evans"},
+          {"given": "Alexander", "family": "Pritzel"}
+        ],
+        "link": [
+          {
+            "URL": "https://www.nature.com/articles/s41586-021-03819-2.pdf",
+            "content-type": "application/pdf"
+          }
+        ]
+      }
+    ]
+  }
+}

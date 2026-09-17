@@ -24,6 +24,7 @@ permissions:
     - www.ncbi.nlm.nih.gov
   llm: false
   ingest: true
+  write: true  # create `cites` edges in the corpus graph
   filesystem: read_write_plugin_data
 
 provides:

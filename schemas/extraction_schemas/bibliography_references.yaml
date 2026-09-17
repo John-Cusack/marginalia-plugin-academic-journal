@@ -1,0 +1,46 @@
+id: bibliography_references
+version: 1
+owner: pack:academic-journal
+
+record_types:
+  - id: bibliography_entry
+    description: A citation/reference from a bibliography or footnote
+    fields:
+      authors:
+        type: string
+        required: true
+      title:
+        type: string
+        required: true
+      year:
+        type: string
+        required: false
+      venue:
+        type: string
+        required: false
+      doi:
+        type: string
+        required: false
+      volume:
+        type: string
+        required: false
+      pages:
+        type: string
+        required: false
+      evidence:
+        type: evidence_span
+        required: true
+      confidence:
+        type: number
+        range: [0, 1]
+        required: true
+
+prompt: |
+  Extract bibliography/reference entries from this passage.
+  Parse each citation into structured fields.
+  Only extract entries that appear to be academic citations.
+
+  {{ passage_text }}
+
+validation:
+  evidence_must_be_substring: true
