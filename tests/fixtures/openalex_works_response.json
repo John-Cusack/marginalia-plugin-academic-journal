@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "count": 2,
+    "db_response_time_ms": 42,
+    "page": 1,
+    "per_page": 50
+  },
+  "results": [
+    {
+      "id": "https://openalex.org/W2741809807",
+      "doi": "https://doi.org/10.48550/arxiv.1706.03762",
+      "title": "Attention Is All You Need",
+      "publication_year": 2017,
+      "cited_by_count": 95000,
+      "abstract_inverted_index": {
+        "The": [0, 9],
+        "dominant": [1],
+        "sequence": [2, 10],
+        "transduction": [3, 11],
+        "models": [4, 12],
+        "are": [5],
+        "based": [6],
+        "on": [7],
+        "complex": [8]
+      },
+      "primary_location": {
+        "source": {
+          "display_name": "Advances in Neural Information Processing Systems"
+        }
+      },
+      "open_access": {
+        "is_oa": true,
+        "oa_url": "https://arxiv.org/pdf/1706.03762.pdf"
+      },
+      "best_oa_location": {
+        "pdf_url": "https://arxiv.org/pdf/1706.03762.pdf",
+        "landing_page_url": "https://arxiv.org/abs/1706.03762"
+      },
+      "authorships": [
+        {"author": {"id": "https://openalex.org/A5023888391", "display_name": "Ashish Vaswani"}},
+        {"author": {"id": "https://openalex.org/A5073351790", "display_name": "Noam Shazeer"}},
+        {"author": {"id": "https://openalex.org/A5048198648", "display_name": "Niki Parmar"}}
+      ]
+    },
+    {
+      "id": "https://openalex.org/W2963403868",
+      "doi": "https://doi.org/10.48550/arxiv.1810.04805",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+      "publication_year": 2018,
+      "cited_by_count": 72000,
+      "abstract_inverted_index": {
+        "We": [0],
+        "introduce": [1],
+        "a": [2],
+        "new": [3],
+        "language": [4],
+        "representation": [5],
+        "model": [6]
+      },
+      "primary_location": {
+        "source": {
+          "display_name": "Conference of the North American Chapter of the Association for Computational Linguistics"
+        }
+      },
+      "open_access": {
+        "is_oa": true,
+        "oa_url": "https://arxiv.org/pdf/1810.04805.pdf"
+      },
+      "best_oa_location": {
+        "pdf_url": "https://arxiv.org/pdf/1810.04805.pdf"
+      },
+      "authorships": [
+        {"author": {"id": "https://openalex.org/A5053130572", "display_name": "Jacob Devlin"}},
+        {"author": {"id": "https://openalex.org/A5042958367", "display_name": "Ming-Wei Chang"}}
+      ]
+    }
+  ]
+}

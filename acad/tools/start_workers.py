@@ -1,35 +1,48 @@
-"""acad.start_workers — Launch background pipeline workers."""
+"""academic-journal.start_workers — Launch in-process pipeline workers."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from research_engine.plugins.sdk import tool
-
-from acad.db.migrate import run_migrations
+from acad import config
 from acad.infra.worker import start_workers, worker_status
+from acad.pipeline.citation_extraction import set_clients
 from acad.pipeline.ingestion import set_ingestion_client
 
+if TYPE_CHECKING:
+    from research_engine_sdk import PluginContext
 
-@tool(
-    id="acad.start_workers",
-    description="Launch background pipeline workers that process papers through "
-                "resolution → acquisition → ingestion → citation extraction. "
-                "Workers poll for pending jobs and process them automatically.",
-    input_schema={"type": "object", "properties": {}},
-)
-async def handler(*, ingestion: Any = None, **kwargs: Any) -> dict:
-    # Wire the core ingestion client into the pipeline module global before
-    # launching (or re-confirming) workers. Idempotent — safe to call repeatedly,
-    # and takes effect for already-running workers since they read the module
-    # global on every job.
+
+async def handler(
+    *,
+    context: PluginContext | None = None,
+    ingestion: Any = None,
+    corpus: Any = None,
+    extraction: Any = None,
+    edge: Any = None,
+    **clients: Any,
+) -> dict:
+    # Bind the data directory and wire the core clients into the pipeline module
+    # globals before launching (or re-confirming) workers. Idempotent — safe to call
+    # repeatedly, and takes effect for already-running workers since they read the
+    # module globals on every job. `edge` requires the `write` permission.
+    config.bind_context(context)
     set_ingestion_client(ingestion)
+    set_clients(extraction=extraction, corpus=corpus, edge=edge)
 
-    await run_migrations()
-    count = await start_workers()
+    started = await start_workers()
+    status = worker_status()
     return {
-        "workers_started": count,
-        "status": worker_status(),
+        "workers_started": started,
+        "status": status,
         "ingestion_client_wired": ingestion is not None,
-        "message": f"Started {count} pipeline workers",
+        "citation_clients_wired": {
+            "extraction": extraction is not None,
+            "corpus": corpus is not None,
+            "edge": edge is not None,
+        },
+        "message": (
+            f"Started {started} pipeline workers; {status['active_workers']} running "
+            "in this server process"
+        ),
     }

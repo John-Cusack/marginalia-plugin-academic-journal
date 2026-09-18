@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CORE_VERSION: "0.6.0"
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.11
+      - run: uv sync --extra dev
+      - run: uv run ruff check acad tests
+      # Unit and contract tests need neither core, a database, nor the network.
+      - run: uv run pytest tests/unit tests/contract -q
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: acad_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # A disposable database, named so the suite's own guard accepts it. The tests
+      # never read RE_DB_URL, so they cannot reach a real corpus.
+      ACAD_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/acad_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.11
+      # The exact core artifact this release is proven against. Never skipped: if core
+      # cannot be installed, integration must fail rather than quietly pass.
+      - run: uv sync --extra dev --group integration
+      - run: uv run python -c "import research_engine; assert research_engine.__version__ == '${{ env.CORE_VERSION }}', research_engine.__version__"
+      - run: uv run pytest tests/integration -q
+
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.11
+      - run: uv build --out-dir dist
+      - run: uvx --from twine twine check --strict dist/*
+      - run: uv run --extra dev --with packaging pytest tests/artifact -q
+        env:
+          ACAD_DIST_DIR: dist
+      - name: Install the wheel beside core and prove discovery
+        run: |
+          python -m venv /tmp/acad-ci-smoke
+          /tmp/acad-ci-smoke/bin/python -m pip install --upgrade pip
+          /tmp/acad-ci-smoke/bin/python -m pip install "marginalia-ai==${CORE_VERSION}" dist/*.whl
+          /tmp/acad-ci-smoke/bin/python - <<'PY'
+          import sys
+          from research_engine.plugins.discovery import scan_plugins
+          report = scan_plugins()
+          assert not report.issues, [str(i) for i in report.issues]
+          ids = [p.plugin_id for p in report.plugins]
+          assert "academic-journal" in ids, ids
+          assert "acad" not in sys.modules, "discovery imported the plugin package"
+          print("discovered", ids)
+          PY
+          /tmp/acad-ci-smoke/bin/research-engine plugin --help

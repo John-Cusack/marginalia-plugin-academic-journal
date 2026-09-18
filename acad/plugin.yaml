@@ -1,0 +1,192 @@
+schema_version: 2
+plugin_id: academic-journal
+
+requires:
+  core_api: ">=0.6,<0.7"
+  python: ">=3.11"
+
+permissions:
+  # Metadata APIs are limited to the allowlist inside the plugin. Open-access PDFs are
+  # downloaded from whatever publisher or repository host the metadata points at, so
+  # egress is not confined to these hosts.
+  network: full
+  network_allowlist:
+    - api.openalex.org
+    - api.semanticscholar.org
+    - api.crossref.org
+    - api.unpaywall.org
+    - arxiv.org
+    - api.core.ac.uk
+    - eutils.ncbi.nlm.nih.gov
+    - www.ncbi.nlm.nih.gov
+  filesystem: read_write_plugin_data  # acquired PDFs under PluginContext.data_dir
+  llm: false
+  ingest: true  # acquired PDFs are ingested through core
+  write: true   # citation extraction creates `cites` edges
+
+provides:
+  database:
+    current_revision: 2
+    upgrade_entry: acad.db.migrate:upgrade
+    status_entry: acad.db.migrate:status
+
+  filter_extensions:
+    - id: academic_paper
+      entry: "acad.filters:AcademicPaperFilter"
+      description: Filter passages from academic papers by year, venue, citation count, or open access status
+
+  source_search:
+    - id: acad
+      entry: "acad.source_search:AcadSourceSearchProvider"
+      description: Discover academic papers in OpenAlex for the unified search_sources tool
+
+  extraction_schemas:
+    - id: bibliography_references
+      version: 1
+      file: schemas/extraction_schemas/bibliography_references.yaml
+
+  mcp_tools:
+    - id: academic-journal.discover_papers
+      entry: "acad.tools.discover_papers:handler"
+      description: >
+        Search OpenAlex, Semantic Scholar, and/or Crossref for academic papers by query.
+        Papers are inserted into the pipeline at the 'discovered' stage.
+      input_schema:
+        type: object
+        properties:
+          query:
+            type: string
+            description: Search query (e.g., 'transformer attention mechanism')
+          max_papers:
+            type: integer
+            description: Maximum papers to discover per source (default 200)
+            default: 200
+          sources:
+            type: array
+            items:
+              type: string
+              enum: [openalex, semantic_scholar, crossref]
+            description: "Which sources to search (default: openalex, plus semantic_scholar if an API key is set)"
+        required: [query]
+
+    - id: academic-journal.discover_by_doi
+      entry: "acad.tools.discover_by_doi:handler"
+      description: Look up a single academic paper by its DOI. If not already known, discovers it from OpenAlex.
+      input_schema:
+        type: object
+        properties:
+          doi:
+            type: string
+            description: The DOI (e.g., '10.1038/s41586-021-03819-2')
+        required: [doi]
+
+    - id: academic-journal.discover_by_author
+      entry: "acad.tools.discover_by_author:handler"
+      description: Discover academic papers by author name or OpenAlex author ID.
+      input_schema:
+        type: object
+        properties:
+          author_name:
+            type: string
+            description: Author name to search for
+          openalex_author_id:
+            type: string
+            description: OpenAlex author ID (e.g., 'A5023888391')
+          max_papers:
+            type: integer
+            description: Maximum papers to discover (default 200)
+            default: 200
+
+    - id: academic-journal.pipeline_status
+      entry: "acad.tools.pipeline_status:handler"
+      description: >
+        Show the current state of the academic paper pipeline: papers by stage, job queue
+        depths, recent errors, API health, and the in-process workers.
+      input_schema:
+        type: object
+        properties: {}
+
+    - id: academic-journal.search_papers
+      entry: "acad.tools.search_papers:handler"
+      description: >
+        Search across ingested academic papers using vector+keyword hybrid search. Only
+        searches papers that have been fully ingested into the corpus.
+      input_schema:
+        type: object
+        properties:
+          query:
+            type: string
+            description: Search query
+          year_min:
+            type: integer
+            description: Minimum publication year filter
+          year_max:
+            type: integer
+            description: Maximum publication year filter
+          venue:
+            type: string
+            description: Filter by venue/journal name (substring match)
+          k:
+            type: integer
+            description: Number of results (default 20)
+            default: 20
+        required: [query]
+
+    - id: academic-journal.retry_failed
+      entry: "acad.tools.retry_failed:handler"
+      description: Re-enqueue failed pipeline jobs for retry. Optionally filter by stage and error pattern.
+      input_schema:
+        type: object
+        properties:
+          stage:
+            type: string
+            description: Filter by pipeline stage (e.g., 'resolved', 'acquired')
+            enum: [resolved, acquired, ingested, citations_extracted]
+          error_pattern:
+            type: string
+            description: Filter by error message substring
+
+    - id: academic-journal.import_manual_pdf
+      entry: "acad.tools.import_manual_pdf:handler"
+      description: >
+        Copy a manually downloaded PDF into the plugin's data directory and link it to an
+        existing paper record, or create a new paper record, then advance it to the
+        'acquired' stage.
+      input_schema:
+        type: object
+        properties:
+          file_path:
+            type: string
+            description: Absolute path to the PDF file
+          paper_id:
+            type: string
+            description: UUID of an existing paper record
+          doi:
+            type: string
+            description: DOI to look up or create a paper record for
+          title:
+            type: string
+            description: Paper title (used if creating a new record)
+        required: [file_path]
+
+    - id: academic-journal.start_workers
+      entry: "acad.tools.start_workers:handler"
+      description: >
+        Start the pipeline workers inside this MCP server process. They poll for jobs and
+        move papers through resolution, acquisition, ingestion, and citation extraction
+        until stopped or the server exits. Idempotent; restarts only stopped stages.
+      input_schema:
+        type: object
+        properties: {}
+
+    - id: academic-journal.stop_workers
+      entry: "acad.tools.stop_workers:handler"
+      description: Stop the pipeline workers running in this MCP server process.
+      input_schema:
+        type: object
+        properties: {}
+
+  post_ingestion_hooks:
+    - id: academic-journal.citation_hook
+      entry: "acad.hooks.citation_hook:handler"
+      event: post_ingestion
