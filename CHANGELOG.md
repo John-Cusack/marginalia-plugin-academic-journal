@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — Unreleased
+## 0.2.0 — 2026-09-18
 
 First release as a Python distribution for Research Engine 0.6.
 
