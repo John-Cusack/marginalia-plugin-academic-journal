@@ -17,8 +17,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       - run: uv python install 3.11
 
       - name: Tag, package version, and changelog must agree
@@ -46,7 +46,7 @@ jobs:
           /tmp/acad-release-smoke/bin/python -m pip install "marginalia-ai==${CORE_VERSION}" dist/*.whl
           /tmp/acad-release-smoke/bin/python -c "from research_engine.plugins.discovery import discover_plugins; assert 'academic-journal' in [p.plugin_id for p in discover_plugins()]"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: distributions
           path: dist/
@@ -61,11 +61,11 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: distributions
           path: dist
-      - uses: pypa/gh-action-pypi-publish@a892a5a61159132606e93a2fa6f4358831b04d26
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: dist/
           repository-url: https://test.pypi.org/legacy/
@@ -82,12 +82,12 @@ jobs:
       # Trusted Publishing only, on this job only. No API token secret exists.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: distributions
           path: dist
       # Pinned to a reviewed commit (v1.14.2). PEP 740 attestations stay on by default,
       # and skip-existing stays off so a duplicate upload fails loudly.
-      - uses: pypa/gh-action-pypi-publish@a892a5a61159132606e93a2fa6f4358831b04d26
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: dist/
