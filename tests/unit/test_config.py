@@ -9,12 +9,17 @@ from acad import config
 from acad.db import pool
 
 
-def _context(tmp_path, plugin_id: str = "academic-journal") -> PluginContext:
+def _context(
+    tmp_path,
+    plugin_id: str = "academic-journal",
+    database_url: str | None = None,
+) -> PluginContext:
     return PluginContext(
         plugin_id=plugin_id,
         data_dir=tmp_path / "plugin-data" / plugin_id,
         distribution_name="marginalia-ai-plugin-academic-journal",
-        distribution_version="0.2.0",
+        distribution_version="0.2.1",
+        database_url=database_url,
     )
 
 
@@ -26,6 +31,17 @@ def test_explicit_url_beats_environment(monkeypatch):
 def test_environment_url_is_normalised_for_asyncpg(monkeypatch):
     monkeypatch.setenv("RE_DB_URL", "postgresql+asyncpg://u:pw@h:5432/d")
     assert config.database_url() == "postgresql://u:pw@h:5432/d"
+
+def test_core_context_url_beats_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("RE_DB_URL", "postgresql+asyncpg://env:pw@envhost/env_db")
+    config.bind_context(
+        _context(
+            tmp_path,
+            database_url="postgresql+asyncpg://core:secret@corehost/core_db",
+        )
+    )
+
+    assert config.database_url() == "postgresql://core:secret@corehost/core_db"
 
 
 def test_missing_url_is_a_config_error_naming_the_variable():

@@ -18,7 +18,7 @@ classifiers = [
     "Topic :: Text Processing :: Indexing",
 ]
 dependencies = [
-    "marginalia-ai-sdk>=0.6,<0.7",
+    "marginalia-ai-sdk>=0.6.1,<0.7",
     "asyncpg>=0.29,<1",
     "httpx>=0.27,<1",
     "pydantic>=2.5,<3",
@@ -39,7 +39,7 @@ dev = [
 # core artifact the plugin is proven against; testcontainers supplies a disposable
 # PostgreSQL when ACAD_TEST_DATABASE_URL is not set.
 integration = [
-    "marginalia-ai[documents]==0.6.0",
+    "marginalia-ai[documents]==0.6.2",
     "testcontainers[postgres]>=4,<5",
     # testcontainers' readiness probe speaks psycopg2; the plugin itself uses asyncpg.
     "psycopg2-binary>=2.9,<3",

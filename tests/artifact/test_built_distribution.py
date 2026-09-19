@@ -19,7 +19,7 @@ import pytest
 pytestmark = pytest.mark.artifact
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 FORBIDDEN = (".env", ".pyc", "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", ".db", ".sqlite")
 
 
@@ -74,7 +74,7 @@ def test_wheel_metadata_is_complete(wheel):
 
     requires = [Requirement(value) for value in meta.get_all("Requires-Dist") or []]
     runtime = {r.name: r for r in requires if not r.marker}
-    assert runtime["marginalia-ai-sdk"].specifier == SpecifierSet(">=0.6,<0.7")
+    assert runtime["marginalia-ai-sdk"].specifier == SpecifierSet(">=0.6.1,<0.7")
     # Core is never a runtime dependency of a plugin distribution.
     assert "marginalia-ai" not in {r.name for r in requires}
     urls = {value.split(",")[0].strip() for value in meta.get_all("Project-URL") or []}

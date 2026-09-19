@@ -53,7 +53,7 @@ HTTP 429 responses are retried with the server's `Retry-After` (capped at 60 sec
 ## Install
 
 The plugin depends only on `marginalia-ai-sdk`; install it into the same environment as
-`marginalia-ai` 0.6.x.
+`marginalia-ai` 0.6.2 or newer.
 
 ```bash
 python -m pip install marginalia-ai marginalia-ai-plugin-academic-journal
@@ -83,13 +83,13 @@ release adds a revision).
 
 ## Configuration
 
-The plugin reads configuration from the process environment only. It does not look for
-`.env` files — core loads its own `.env` into its settings, not into the environment, so a
-plugin searching the working directory or `$HOME` would find the wrong file or none.
+Core 0.6.2 supplies the configured corpus database URL through the plugin context; this
+includes values loaded from core's `.env`. The plugin never searches for `.env` files
+itself. Standalone scripts may still supply `RE_DB_URL` explicitly.
 
 | Variable | Purpose |
 |---|---|
-| `RE_DB_URL` | **Required at runtime.** The corpus database. Export it for the process running `research-engine serve` — for MCP clients, in the server's `env` block. `plugin migrate` passes core's configured URL to the migration itself. |
+| `RE_DB_URL` | Corpus database override for standalone plugin code. Core-hosted tools use the database URL supplied in `PluginContext`; migrations receive the same URL explicitly. |
 | `ACAD_JOB_LEASE_SECONDS` | How long a job may stay `in_progress` before another worker reclaims it (default 3600). |
 | `ACAD_MAX_SNOWBALL_PAPERS` | Budget for papers discovered through citations (default 200). |
 | `ACAD_MODULES_DIR` | Optional directory of extra acquisition modules. Every `*.py` file there runs in the server process; there is no default location. |
@@ -175,7 +175,8 @@ or redistribute anything.
 
 | Plugin | marginalia-ai / marginalia-ai-sdk | Python |
 |---|---|---|
-| 0.2.x | 0.6.x | ≥ 3.11 |
+| 0.2.1 | 0.6.2+ | ≥ 3.11 |
+| 0.2.0 | 0.6.x | ≥ 3.11 |
 
 The public API is the SDK; the plugin imports nothing from `research_engine`.
 
