@@ -66,5 +66,6 @@ uvx --from twine twine check --strict dist/*
 ```
 
 Then exercise the built wheel in a clean environment with
-`scripts/release_smoke.py` (see the README), tag `v0.2.0`, and let the workflow publish.
-A manual `workflow_dispatch` run publishes the same artifacts to TestPyPI instead.
+`scripts/release_smoke.py` (see the README), tag the immutable release as
+`v<version>`, and let the workflow publish. A manual `workflow_dispatch` run
+publishes the same artifacts to TestPyPI instead.

@@ -2,7 +2,7 @@ schema_version: 2
 plugin_id: academic-journal
 
 requires:
-  core_api: ">=0.6,<0.7"
+  core_api: ">=0.6.2,<0.7"
   python: ">=3.11"
 
 permissions:

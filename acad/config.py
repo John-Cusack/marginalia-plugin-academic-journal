@@ -2,12 +2,12 @@
 
 Nothing here reads a ``.env`` file. Core loads its own ``.env`` into its settings object,
 not into the process environment, so a plugin that went looking for one would read a
-different file depending on the working directory it was started from — or a stale one
-in ``$HOME``. Configuration therefore arrives one of three ways, in this order:
+different file depending on the working directory it was started from — or a stale one.
+Configuration therefore arrives one of three ways, in this order:
 
-1. a ``database_url`` passed explicitly (core's ``plugin migrate`` capability, or tests);
-2. ``RE_DB_URL`` exported into the environment of the process running core;
-3. nothing — which is a :class:`PluginConfigError`, never a guessed default.
+1. a ``database_url`` passed explicitly by core's migration capability or tests;
+2. the secret database URL in ``PluginContext`` for tool calls;
+3. ``RE_DB_URL`` exported into the process environment for standalone use.
 
 Mutable state lives under ``PluginContext.data_dir``, which core supplies to every tool
 call and to the migration entries.
@@ -42,6 +42,7 @@ SECRET_ENV_VARS = (
 REDACTED = "[redacted]"
 
 _data_dir: Path | None = None
+_database_url: str | None = None
 
 _SENSITIVE_NAME = re.compile(
     r"(?:.*[_-])?(?:api[_-]?key|apikey|key|token|password|secret|email|mailto)",
@@ -57,9 +58,9 @@ _BEARER = re.compile(r"(?P<prefix>\bBearer\s+)\S+", re.IGNORECASE)
 
 
 def bind_context(context: PluginContext | None) -> None:
-    """Adopt the data directory core resolved for this plugin."""
+    """Adopt the data directory and database URL resolved by core."""
 
-    global _data_dir
+    global _data_dir, _database_url
     if context is None:
         return
     if context.plugin_id != PLUGIN_ID:
@@ -67,24 +68,27 @@ def bind_context(context: PluginContext | None) -> None:
             f"academic-journal received a context for plugin {context.plugin_id!r}"
         )
     _data_dir = Path(context.data_dir)
+    if context.database_url is not None:
+        _database_url = context.database_url.get_secret_value()
 
 
 def reset() -> None:
     """Forget the bound context (tests)."""
 
-    global _data_dir
+    global _data_dir, _database_url
     _data_dir = None
+    _database_url = None
 
 
 def database_url(explicit: str | None = None) -> str:
-    """The asyncpg DSN for the plugin's tables. Explicit beats ``RE_DB_URL``."""
+    """The asyncpg DSN: explicit migration URL, core context, then environment."""
 
-    url = explicit or os.environ.get(DATABASE_URL_ENV)
+    url = explicit or _database_url or os.environ.get(DATABASE_URL_ENV)
     if not url:
         raise PluginConfigError(
-            "academic-journal has no database URL. Export RE_DB_URL in the environment "
-            "of the process running research-engine (for MCP, the server's env block). "
-            "The plugin does not read .env files."
+            "academic-journal has no database URL. Run it through "
+            "marginalia-ai>=0.6.2, pass database_url explicitly, or export "
+            "RE_DB_URL for standalone use."
         )
     return url.replace("postgresql+asyncpg://", "postgresql://", 1)
 

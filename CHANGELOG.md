@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-09-19
+
+### Fixed
+
+- Database-backed tools now use the secret database URL supplied by MarginaliaAI 0.6.2 in
+  `PluginContext`. A URL loaded from core's `.env` therefore reaches the plugin reliably;
+  `RE_DB_URL` remains the explicit fallback for standalone plugin code.
+
 ## 0.2.0 — 2026-09-18
 
 First release as a Python distribution for Research Engine 0.6.

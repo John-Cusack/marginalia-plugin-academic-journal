@@ -66,7 +66,7 @@ def test_distribution_metadata_is_complete():
 
 def test_compatibility_is_declared_for_this_core_series(manifest):
     assert manifest.schema_version == 2
-    assert manifest.requires.core_api == ">=0.6,<0.7"
+    assert manifest.requires.core_api == ">=0.6.2,<0.7"
     assert manifest.requires.python == ">=3.11"
 
 

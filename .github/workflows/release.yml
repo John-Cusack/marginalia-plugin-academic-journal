@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  CORE_VERSION: "0.6.0"
+  CORE_VERSION: "0.6.2"
 
 jobs:
   build:
