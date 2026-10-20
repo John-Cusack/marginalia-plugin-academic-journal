@@ -126,6 +126,7 @@ def job_lease_seconds() -> float:
         raise PluginConfigError(f"{JOB_LEASE_ENV} must be positive")
     return value
 
+
 def job_timeout_seconds() -> float:
     """How long one job handler may run before the worker fails it and moves on."""
 

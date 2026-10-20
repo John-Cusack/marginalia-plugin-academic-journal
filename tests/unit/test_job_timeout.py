@@ -40,16 +40,14 @@ async def test_hung_handler_fails_its_job_and_stage_moves_on(monkeypatch):
         "acad.infra.job_queue.db.claim_jobs",
         AsyncMock(side_effect=lambda *a: claims.pop(0) if claims else []),
     )
-    monkeypatch.setattr(
-        "acad.infra.job_queue.db.complete_job", AsyncMock()
-    )
+    monkeypatch.setattr("acad.infra.job_queue.db.complete_job", AsyncMock())
+
     async def fail_job(job_id: str, error: str) -> None:
         failed.append((job_id, error))
+
     monkeypatch.setattr("acad.infra.job_queue.db.fail_job", fail_job)
 
-    queue = jq.JobQueue(
-        stage="ingested", handler=handler, poll_interval=0.01, handler_timeout=0.05
-    )
+    queue = jq.JobQueue(stage="ingested", handler=handler, poll_interval=0.01, handler_timeout=0.05)
     await _drive(queue)
 
     assert completed == ["fast"]
@@ -63,9 +61,7 @@ async def test_fast_handler_never_hits_the_timeout(monkeypatch):
         "acad.infra.job_queue.db.claim_jobs",
         AsyncMock(side_effect=[[_job("ok")], []]),
     )
-    monkeypatch.setattr(
-        "acad.infra.job_queue.db.complete_job", AsyncMock()
-    )
+    monkeypatch.setattr("acad.infra.job_queue.db.complete_job", AsyncMock())
     monkeypatch.setattr("acad.infra.job_queue.db.fail_job", AsyncMock())
 
     queue = jq.JobQueue(
@@ -82,12 +78,7 @@ async def test_fast_handler_never_hits_the_timeout(monkeypatch):
 
 def test_default_timeout_comes_from_config_and_override_wins(monkeypatch):
     monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "60")
+    assert JobQueue(stage="ingested", handler=AsyncMock()).handler_timeout == 60.0
     assert (
-        JobQueue(stage="ingested", handler=AsyncMock()).handler_timeout == 60.0
-    )
-    assert (
-        JobQueue(
-            stage="ingested", handler=AsyncMock(), handler_timeout=7.5
-        ).handler_timeout
-        == 7.5
+        JobQueue(stage="ingested", handler=AsyncMock(), handler_timeout=7.5).handler_timeout == 7.5
     )
