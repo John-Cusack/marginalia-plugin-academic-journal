@@ -133,3 +133,22 @@ def test_job_lease_default_and_validation(monkeypatch):
     monkeypatch.setenv(config.JOB_LEASE_ENV, "0")
     with pytest.raises(PluginConfigError):
         config.job_lease_seconds()
+
+
+def test_job_timeout_default_and_validation(monkeypatch):
+    assert config.job_timeout_seconds() == config.DEFAULT_JOB_TIMEOUT_SECONDS
+    monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "120")
+    assert config.job_timeout_seconds() == 120.0
+    monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "0")
+    with pytest.raises(PluginConfigError):
+        config.job_timeout_seconds()
+    monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "ten minutes")
+    with pytest.raises(PluginConfigError):
+        config.job_timeout_seconds()
+    # A non-finite deadline would silently never fire.
+    monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "inf")
+    with pytest.raises(PluginConfigError):
+        config.job_timeout_seconds()
+    monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "nan")
+    with pytest.raises(PluginConfigError):
+        config.job_timeout_seconds()

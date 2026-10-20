@@ -91,6 +91,7 @@ itself. Standalone scripts may still supply `RE_DB_URL` explicitly.
 |---|---|
 | `RE_DB_URL` | Corpus database override for standalone plugin code. Core-hosted tools use the database URL supplied in `PluginContext`; migrations receive the same URL explicitly. |
 | `ACAD_JOB_LEASE_SECONDS` | How long a job may stay `in_progress` before another worker reclaims it (default 3600). |
+| `ACAD_JOB_TIMEOUT_SECONDS` | How long one job handler may run before the worker fails it and moves to the next job (default 1800). Without this bound a hung handler wedges its whole stage. Must be a positive, finite number of seconds. |
 | `ACAD_MAX_SNOWBALL_PAPERS` | Budget for papers discovered through citations (default 200). |
 | `ACAD_MODULES_DIR` | Optional directory of extra acquisition modules. Every `*.py` file there runs in the server process; there is no default location. |
 

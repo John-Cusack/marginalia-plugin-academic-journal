@@ -18,6 +18,11 @@ from acad.db.migrate import require_current
 _pool: asyncpg.Pool | None = None
 _lock: asyncio.Lock | None = None
 
+# Every plugin query is small OLTP (claim, complete, fail, status reads). A
+# statement running longer than this is a wedged connection, and without a
+# bound it stalls the awaiting worker task forever with no error logged.
+_COMMAND_TIMEOUT = 30.0
+
 
 async def get_pool() -> asyncpg.Pool:
     """Get or create the connection pool."""
@@ -30,7 +35,9 @@ async def get_pool() -> asyncpg.Pool:
         if _pool is None:
             dsn = config.database_url()
             try:
-                pool = await asyncpg.create_pool(dsn, min_size=1, max_size=10)
+                pool = await asyncpg.create_pool(
+                    dsn, min_size=1, max_size=10, command_timeout=_COMMAND_TIMEOUT
+                )
             except Exception as exc:
                 raise PluginConfigError(
                     f"academic-journal cannot connect to {config.redact_url(dsn)}: "
