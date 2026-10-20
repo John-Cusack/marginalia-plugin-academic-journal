@@ -30,6 +30,8 @@ PLUGIN_ID = "academic-journal"
 DATABASE_URL_ENV = "RE_DB_URL"
 JOB_LEASE_ENV = "ACAD_JOB_LEASE_SECONDS"
 DEFAULT_JOB_LEASE_SECONDS = 3600.0
+JOB_TIMEOUT_ENV = "ACAD_JOB_TIMEOUT_SECONDS"
+DEFAULT_JOB_TIMEOUT_SECONDS = 1800.0
 
 #: Environment variables whose values are credentials or personal contact details.
 SECRET_ENV_VARS = (
@@ -122,6 +124,20 @@ def job_lease_seconds() -> float:
         raise PluginConfigError(f"{JOB_LEASE_ENV} must be a number of seconds") from exc
     if value <= 0:
         raise PluginConfigError(f"{JOB_LEASE_ENV} must be positive")
+    return value
+
+def job_timeout_seconds() -> float:
+    """How long one job handler may run before the worker fails it and moves on."""
+
+    raw = os.environ.get(JOB_TIMEOUT_ENV)
+    if not raw:
+        return DEFAULT_JOB_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise PluginConfigError(f"{JOB_TIMEOUT_ENV} must be a number of seconds") from exc
+    if value <= 0:
+        raise PluginConfigError(f"{JOB_TIMEOUT_ENV} must be positive")
     return value
 
 

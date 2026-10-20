@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A hung job handler no longer wedges its whole pipeline stage. Each handler now runs
+  under `ACAD_JOB_TIMEOUT_SECONDS` (default 1800): on expiry the job fails with backoff
+  like any other error instead of blocking the worker task forever. Previously a single
+  stuck `await` (or a `stop_workers` cancel landing mid-handler) left the job
+  `in_progress` with a live-but-blocked worker, so nothing — not even lease reclaim,
+  which only helps other processes — could move the stage forward.
+- Database statements are now bounded by a 30s `command_timeout`, so a wedged
+  connection surfaces as an error instead of stalling the awaiting worker silently.
+
 ## 0.2.1 — 2026-09-19
 
 ### Fixed

@@ -26,11 +26,17 @@ class JobQueue:
         handler: Callable[[dict[str, Any]], Awaitable[None]],
         batch_size: int = 5,
         poll_interval: float = 2.0,
+        handler_timeout: float | None = None,
     ) -> None:
         self.stage = stage
         self.handler = handler
         self.batch_size = batch_size
         self.poll_interval = poll_interval
+        # A hung handler must never wedge the stage: without a deadline one
+        # stuck await blocks this whole task, and the claimed batch behind it.
+        self.handler_timeout = (
+            config.job_timeout_seconds() if handler_timeout is None else handler_timeout
+        )
         self.worker_id = f"{stage}-{uuid.uuid4().hex[:8]}"
         self.last_claim_error: str | None = None
         self._running = False
@@ -71,7 +77,7 @@ class JobQueue:
 
             for job in jobs:
                 try:
-                    await self.handler(job)
+                    await asyncio.wait_for(self.handler(job), self.handler_timeout)
                     await db.complete_job(job["id"])
                     processed += 1
                     if processed % 10 == 0:
@@ -81,6 +87,17 @@ class JobQueue:
                         "Job %s deferred (circuit open for %s)", job["id"], exc.source
                     )
                     await db.defer_job(job["id"], delay_seconds=exc.retry_after + 5)
+                except TimeoutError:
+                    # The handler hung: fail it (backoff, then failed after
+                    # max_attempts) so the stage keeps moving. Lease reclaim is
+                    # the backstop for jobs orphaned by a killed process, not
+                    # for a live-but-stuck handler.
+                    error = (
+                        f"handler timed out after {self.handler_timeout:g}s "
+                        f"(see {config.JOB_TIMEOUT_ENV})"
+                    )
+                    logger.error("Job %s (paper %s) %s", job["id"], job["paper_id"], error)
+                    await db.fail_job(job["id"], error)
                 except Exception as exc:
                     error = config.redact_text(str(exc)) or type(exc).__name__
                     logger.error(
