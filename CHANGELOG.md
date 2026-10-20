@@ -12,6 +12,16 @@
   which only helps other processes — could move the stage forward.
 - Database statements are now bounded by a 30s `command_timeout`, so a wedged
   connection surfaces as an error instead of stalling the awaiting worker silently.
+- A timeout raised *inside* a handler — an HTTP client read timeout, a database
+  statement — is no longer reported as a hung handler. The worker now tells its own
+  deadline apart from a timeout the handler raised, so the recorded failure names the
+  real cause instead of blaming `ACAD_JOB_TIMEOUT_SECONDS`.
+- A database outage while recording a job's outcome no longer ends the worker task.
+  The job stays `in_progress` and lease reclaim returns it to the pool, so the stage
+  keeps moving.
+- `ACAD_JOB_TIMEOUT_SECONDS` now rejects `inf` and `nan`, which would silently
+  disable the deadline — the timer never fires, which is the wedge the setting exists
+  to prevent.
 
 ## 0.2.1 — 2026-09-19
 

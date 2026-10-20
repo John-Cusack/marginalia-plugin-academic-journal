@@ -145,3 +145,10 @@ def test_job_timeout_default_and_validation(monkeypatch):
     monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "ten minutes")
     with pytest.raises(PluginConfigError):
         config.job_timeout_seconds()
+    # A non-finite deadline would silently never fire.
+    monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "inf")
+    with pytest.raises(PluginConfigError):
+        config.job_timeout_seconds()
+    monkeypatch.setenv(config.JOB_TIMEOUT_ENV, "nan")
+    with pytest.raises(PluginConfigError):
+        config.job_timeout_seconds()

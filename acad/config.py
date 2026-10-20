@@ -15,6 +15,7 @@ call and to the migration entries.
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from pathlib import Path
@@ -137,8 +138,10 @@ def job_timeout_seconds() -> float:
         value = float(raw)
     except ValueError as exc:
         raise PluginConfigError(f"{JOB_TIMEOUT_ENV} must be a number of seconds") from exc
-    if value <= 0:
-        raise PluginConfigError(f"{JOB_TIMEOUT_ENV} must be positive")
+    # A non-finite value would silently disable the deadline - the timer
+    # never fires - which is exactly the wedge this setting exists to stop.
+    if not math.isfinite(value) or value <= 0:
+        raise PluginConfigError(f"{JOB_TIMEOUT_ENV} must be a positive, finite number of seconds")
     return value
 
 
